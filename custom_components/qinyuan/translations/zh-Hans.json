@@ -1,0 +1,31 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "沁园智联净水器",
+        "description": "使用沁园智联账号登录，集成会自动获取设备和滤芯寿命。",
+        "data": {
+          "phone": "手机号",
+          "password": "密码",
+          "scan_interval": "刷新间隔（秒）"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "连接或登录失败，请检查账号密码。"
+    },
+    "abort": {
+      "already_configured": "这个沁园账号已经配置过。"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "沁园智联选项",
+        "data": {
+          "scan_interval": "刷新间隔（秒）"
+        }
+      }
+    }
+  }
+}

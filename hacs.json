@@ -1,0 +1,12 @@
+{
+  "name": "Qinyuan Smart Water Purifier",
+  "render_readme": true,
+  "domains": [
+    "sensor"
+  ],
+  "iot_class": "Cloud Polling",
+  "country": [
+    "CN"
+  ],
+  "homeassistant": "2026.5.0"
+}

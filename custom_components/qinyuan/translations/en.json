@@ -1,0 +1,31 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Qinyuan Smart Water Purifier",
+        "description": "Log in with your Qinyuan Smart Connect account. Devices and filter life sensors will be discovered automatically.",
+        "data": {
+          "phone": "Phone number",
+          "password": "Password",
+          "scan_interval": "Update interval in seconds"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect or authenticate. Check the account and password."
+    },
+    "abort": {
+      "already_configured": "This Qinyuan account is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Qinyuan options",
+        "data": {
+          "scan_interval": "Update interval in seconds"
+        }
+      }
+    }
+  }
+}
