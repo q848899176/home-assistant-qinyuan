@@ -27,12 +27,21 @@ class QinyuanAuthError(QinyuanApiError):
     """Qinyuan authentication error."""
 
 
+class QinyuanAccountLockedError(QinyuanAuthError):
+    """The cloud account must be unlocked before logging in again."""
+
+
+def hash_password(password: str) -> str:
+    """Hash a password exactly as entered, including significant whitespace."""
+    return hashlib.md5(password.encode("utf-8")).hexdigest().upper()
+
+
 def normalize_password_hash(password: str) -> str:
     """Return the uppercase MD5 password hash used by the Qinyuan app."""
     value = password.strip()
     if len(value) == 32 and all(char in "0123456789abcdefABCDEF" for char in value):
         return value.upper()
-    return hashlib.md5(value.encode("utf-8")).hexdigest().upper()
+    return hash_password(password)
 
 
 class QinyuanApiClient:
@@ -53,9 +62,12 @@ class QinyuanApiClient:
         self._app_version = app_version
         self._user_agent = user_agent
         self._token: str | None = None
+        self._auth_error: QinyuanAuthError | None = None
 
     async def async_login(self) -> str:
         """Login and return a fresh cloud token."""
+        if self._auth_error is not None:
+            raise self._auth_error
         payload = {
             "accessKey": APP_ACCESS_KEY,
             "appType": APP_TYPE,
@@ -63,10 +75,17 @@ class QinyuanApiClient:
             "phone": self._phone,
             "password": self._password_hash,
         }
-        data = await self._request("POST", "/web/api/app/user/login", data=payload, auth=False)
-        token = data.get("data", {}).get("token")
-        if not token:
-            raise QinyuanAuthError("Qinyuan login did not return a token")
+        try:
+            data = await self._request("POST", "/web/api/app/user/login", data=payload, auth=False)
+            account = data.get("data")
+            token = account.get("token") if isinstance(account, dict) else None
+            if not isinstance(token, str) or not token:
+                raise QinyuanApiError("Qinyuan login returned an incomplete response")
+        except QinyuanAuthError as err:
+            # Wait for the user to replace credentials instead of locking the account again.
+            self._token = None
+            self._auth_error = err
+            raise
         self._token = token
         return token
 
@@ -87,7 +106,10 @@ class QinyuanApiClient:
             "/web/api/app/device/filter/detail",
             params={"iotId": iot_id, "productKey": product_key},
         )
-        filters = data.get("data", {}).get("filterDetail", [])
+        detail = data.get("data")
+        if not isinstance(detail, dict):
+            raise QinyuanApiError("Unexpected Qinyuan filter detail response")
+        filters = detail.get("filterDetail", [])
         if not isinstance(filters, list):
             raise QinyuanApiError("Unexpected Qinyuan filter detail response")
         return [filter_item for filter_item in filters if isinstance(filter_item, dict)]
@@ -103,8 +125,10 @@ class QinyuanApiClient:
                 continue
             try:
                 filters = await self.async_get_filter_detail(iot_id, product_key)
+            except QinyuanAuthError:
+                raise
             except QinyuanApiError as err:
-                _LOGGER.warning("Failed to fetch filter detail for %s: %s", iot_id, err)
+                _LOGGER.warning("Failed to fetch filter details: %s", err)
                 filters = []
             result[iot_id] = {"device": device, "filters": filters}
         return result
@@ -119,6 +143,8 @@ class QinyuanApiClient:
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Call a Qinyuan API endpoint."""
+        if self._auth_error is not None:
+            raise self._auth_error
         if auth and not self._token:
             await self.async_login()
 
@@ -134,29 +160,55 @@ class QinyuanApiClient:
                 timeout=20,
                 **kwargs,
             ) as response:
-                if response.status in (401, 403) and auth and retry_auth:
-                    self._token = None
-                    await self.async_login()
-                    return await self._request(method, path, auth=auth, retry_auth=False, **kwargs)
-                response.raise_for_status()
-                data: dict[str, Any] = await response.json(content_type=None)
+                if response.status in (401, 403):
+                    data = {"code": response.status}
+                else:
+                    response.raise_for_status()
+                    data = await response.json(content_type=None)
         except ClientResponseError as err:
-            if err.status in (401, 403) and auth and retry_auth:
-                self._token = None
-                await self.async_login()
-                return await self._request(method, path, auth=auth, retry_auth=False, **kwargs)
-            raise QinyuanApiError(f"Qinyuan request failed: {err}") from err
-        except ClientError as err:
-            raise QinyuanApiError(f"Qinyuan request failed: {err}") from err
+            raise QinyuanApiError(f"Qinyuan request failed (HTTP {err.status})") from err
+        except (ClientError, TimeoutError, ValueError) as err:
+            raise QinyuanApiError("Cannot connect to Qinyuan or read its response") from err
 
+        if not isinstance(data, dict):
+            raise QinyuanApiError("Unexpected Qinyuan API response")
         code = data.get("code")
-        message = data.get("msg") or data.get("message") or "unknown error"
-        if code in (401, 403, "401", "403", 1001, "1001"):
+        message = str(data.get("msg") or data.get("message") or "").lower()
+        failed = data.get("success") is False or code not in (None, 0, "0", 200, "200")
+        if code in (144, "144") or (failed and any(word in message for word in ("锁定", "locked"))):
+            self._token = None
+            self._auth_error = QinyuanAccountLockedError("Qinyuan account is locked")
+            raise self._auth_error
+        numeric_code = int(code) if str(code).isdigit() else 0
+        if numeric_code == 429 or 500 <= numeric_code < 600:
+            raise QinyuanApiError("Qinyuan service is temporarily unavailable")
+        auth_failed = code in (401, 403, "401", "403", 1001, "1001") or (
+            failed
+            and any(
+                word in message
+                for word in (
+                    "token",
+                    "登录",
+                    "授权",
+                    "失效",
+                    "过期",
+                    "密码",
+                    "password",
+                    "用户名",
+                    "账号不存在",
+                    "account not found",
+                    "invalid credential",
+                )
+            )
+        )
+        if auth_failed:
             if auth and retry_auth:
                 self._token = None
                 await self.async_login()
                 return await self._request(method, path, auth=auth, retry_auth=False, **kwargs)
-            raise QinyuanAuthError(str(message))
-        if code not in (None, 0, "0", 200, "200"):
-            raise QinyuanApiError(str(message))
+            self._token = None
+            self._auth_error = QinyuanAuthError("Qinyuan credentials are invalid or expired")
+            raise self._auth_error
+        if failed:
+            raise QinyuanApiError("Qinyuan rejected the request")
         return data

@@ -9,13 +9,33 @@
           "password": "Password",
           "scan_interval": "Update interval in seconds"
         }
+      },
+      "reconfigure": {
+        "title": "Update Qinyuan account credentials",
+        "description": "Enter the current password for this Qinyuan account.",
+        "data": {
+          "phone": "Phone number",
+          "password": "New password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Sign in to Qinyuan again",
+        "description": "Your saved credentials no longer work. Enter your current password.",
+        "data": {
+          "phone": "Phone number",
+          "password": "Current password"
+        }
       }
     },
     "error": {
-      "cannot_connect": "Failed to connect or authenticate. Check the account and password."
+      "cannot_connect": "Cannot connect to Qinyuan. Please try again later.",
+      "invalid_auth": "The account or password is incorrect. Enter your current Qinyuan password.",
+      "account_locked": "Qinyuan has locked this account. Resolve the lock in the Qinyuan app or with Qinyuan support before trying again.",
+      "wrong_account": "Use the same account as this integration. To use another account, add a new integration."
     },
     "abort": {
-      "already_configured": "This Qinyuan account is already configured."
+      "already_configured": "This Qinyuan account is already configured.",
+      "unique_id_mismatch": "The account does not match this integration."
     }
   },
   "options": {

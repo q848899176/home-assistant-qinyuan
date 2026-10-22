@@ -6,6 +6,7 @@ __pycache__/
 .DS_Store
 .venv/
 venv/
+private/
 *.zip
 *.har
 *.pcap

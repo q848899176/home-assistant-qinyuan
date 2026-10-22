@@ -9,13 +9,33 @@
           "password": "密码",
           "scan_interval": "刷新间隔（秒）"
         }
+      },
+      "reconfigure": {
+        "title": "更新沁园账号密码",
+        "description": "输入这个沁园账号当前使用的密码。",
+        "data": {
+          "phone": "账号（手机号）",
+          "password": "新密码"
+        }
+      },
+      "reauth_confirm": {
+        "title": "重新登录沁园智联",
+        "description": "保存的凭据已失效，请输入当前使用的沁园密码。",
+        "data": {
+          "phone": "账号（手机号）",
+          "password": "当前密码"
+        }
       }
     },
     "error": {
-      "cannot_connect": "连接或登录失败，请检查账号密码。"
+      "cannot_connect": "暂时无法连接沁园服务器，请稍后重试。",
+      "invalid_auth": "账号或密码不正确，请输入当前使用的沁园密码。",
+      "account_locked": "沁园账号已锁定，请先在沁园 App 中处理或联系沁园客服解锁，再尝试登录。",
+      "wrong_account": "请使用当前集成绑定的手机号。其他账号请通过“添加集成”接入。"
     },
     "abort": {
-      "already_configured": "这个沁园账号已经配置过。"
+      "already_configured": "这个沁园账号已经配置过。",
+      "unique_id_mismatch": "登录账号与当前集成绑定的账号不一致。"
     }
   },
   "options": {
