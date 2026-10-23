@@ -85,3 +85,38 @@ async def test_filter_auth_failure_reaches_home_assistant(cloud):
         client = QinyuanApiClient(session, "test-account", "A" * 32)
         with pytest.raises(QinyuanAuthError):
             await client.async_get_all_filter_details()
+
+
+@pytest.mark.parametrize("code", [100, "100"])
+async def test_success_code_100_keeps_filter_percentages(cloud, code):
+    filters = [
+        {
+            "id": "composite",
+            "percentId": "composite-life",
+            "name": "Composite",
+            "percent": 0,
+            "status": 1,
+        },
+        {"id": "ro", "percentId": "ro-life", "name": "RO", "percent": 91, "status": 0},
+        {"id": "carbon", "percentId": "carbon-life", "name": "Carbon", "percent": 20, "status": 0},
+    ]
+    payloads = [
+        {"success": True, "data": {"token": "test-token"}},
+        {"success": True, "data": [{"iotId": "test-iot", "productKey": "test-product"}]},
+        {"success": True, "code": code, "data": {"filterDetail": filters}},
+    ]
+    async with cloud(payloads), ClientSession() as session:
+        client = QinyuanApiClient(session, "test-account", "A" * 32)
+        values = await client.async_get_all_filter_details()
+    assert [f["percent"] for f in values["test-iot"]["filters"]] == [0, 91, 20]
+
+
+async def test_false_success_with_code_100_is_still_an_error(cloud):
+    payloads = [
+        {"success": True, "data": {"token": "test-token"}},
+        {"success": False, "code": 100, "data": {"filterDetail": [{"percent": 91}]}},
+    ]
+    async with cloud(payloads), ClientSession() as session:
+        client = QinyuanApiClient(session, "test-account", "A" * 32)
+        with pytest.raises(QinyuanApiError):
+            await client.async_get_filter_detail("test-iot", "test-product")

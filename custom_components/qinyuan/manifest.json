@@ -1,6 +1,6 @@
 {
   "domain": "qinyuan",
-  "name": "Qinyuan Smart Water Purifier",
+  "name": "沁园智联",
   "codeowners": [
     "@q848899176"
   ],
@@ -9,5 +9,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/q848899176/home-assistant-qinyuan/issues",
   "requirements": [],
-  "version": "0.1.1"
+  "version": "0.1.2"
 }

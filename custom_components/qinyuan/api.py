@@ -174,7 +174,7 @@ class QinyuanApiClient:
             raise QinyuanApiError("Unexpected Qinyuan API response")
         code = data.get("code")
         message = str(data.get("msg") or data.get("message") or "").lower()
-        failed = data.get("success") is False or code not in (None, 0, "0", 200, "200")
+        failed = data.get("success") is False or code not in (None, 0, "0", 100, "100", 200, "200")
         if code in (144, "144") or (failed and any(word in message for word in ("锁定", "locked"))):
             self._token = None
             self._auth_error = QinyuanAccountLockedError("Qinyuan account is locked")
